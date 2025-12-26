@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>食尽其用 - 食材倒推菜谱</title>
+    <!-- 引入Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入Font Awesome图标 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- 引入Google字体（支持中英文显示） -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;600;700&family=Noto+Sans+EN:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* 全局样式 */
+        :root {
+            --primary-color: #4CAF50;
+            --primary-light: #E8F5E9;
+            --warning-color: #FF9800;
+            --warning-light: #FFF3E0;
+            --text-primary: #333333;
+            --text-secondary: #666666;
+            --text-tertiary: #999999;
+            --bg-primary: #FFFFFF;
+            --bg-secondary: #F5F5F5;
+            --bg-tertiary: #EEEEEE;
+            --border-color: #E0E0E0;
+        }
+
+        .dark-mode {
+            --primary-color: #66BB6A;
+            --primary-light: #2E7D32;
+            --warning-color: #FFB74D;
+            --warning-light: #FF8F00;
+            --text-primary: #FAFAFA;
+            --text-secondary: #E0E0E0;
+            --text-tertiary: #9E9E9E;
+            --bg-primary: #121212;
+            --bg-secondary: #1E1E1E;
+            --bg-tertiary: #2D2D2D;
+            --border-color: #333333;
+        }
+
+        * {
+            font-family: 'Noto Sans SC', 'Noto Sans EN', sans-serif;
+            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+        }
+
+        /* 动画与过渡 */
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        .fade-out { animation: fadeOut 0.3s ease-in-out; }
+        .slide-up { animation: slideUp 0.3s ease-in-out; }
+        .scale-hover { transition: transform 0.2s, box-shadow 0.2s; }
+        .scale-hover:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        .search-highlight { background-color: var(--primary-light); color: var(--primary-color); font-weight: 500; }
+        .skeleton { background: linear-gradient(90deg, var(--bg-tertiary) 25%, var(--border-color) 50%, var(--bg-tertiary) 75%); background-size: 200% 100%; animation: skeletonLoading 1.5s infinite; }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        @keyframes skeletonLoading { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+        /* 自定义滚动条 */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: var(--bg-tertiary); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb { background: var(--text-tertiary); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--primary-color); }
+    </style>
+</head>
+<body class="bg-secondary text-primary min-h-screen">
+    <div class="container mx-auto px-4 py-6 max-w-7xl">
+        <!-- 顶部导航栏 -->
+        <header class="mb-6 bg-primary rounded-xl shadow-sm p-4 border border-border-color">
+            <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <!-- 网站标题 + 语言切换 -->
+                <div class="flex items-center gap-4">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-utensils text-2xl text-primary-color"></i>
+                        <h1 class="text-2xl font-bold" id="site-title">食尽其用</h1>
+                    </div>
+                    <div class="flex gap-2">
+                        <button id="lang-zh" class="px-3 py-1 rounded-lg bg-primary-light text-primary-color font-medium text-sm active">中</button>
+                        <button id="lang-en" class="px-3 py-1 rounded-lg bg-bg-tertiary text-text-secondary font-medium text-sm">En</button>
+                    </div>
+                </div>
+
+                <!-- 功能按钮区（明暗模式 + 登录/个人中心） -->
+                <div class="flex items-center gap-3">
+                    <button id="theme-toggle" class="w-10 h-10 rounded-full bg-bg-tertiary flex items-center justify-center hover:bg-border-color transition-colors">
+                        <i class="fa-solid fa-moon text-text-secondary"></i>
+                    </button>
+                    <button id="user-btn" class="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary-color text-white hover:bg-primary-light hover:text-primary-color border border-primary-color transition-colors">
+                        <i class="fa-solid fa-user"></i>
+                        <span id="user-btn-text">登录/注册</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 食材搜索 + 手动添加食材 -->
+            <div class="flex flex-col md:flex-row gap-3 mt-4">
+                <div class="relative flex-1">
+                    <input type="text" id="ingredient-search" placeholder="搜索食材（如：番茄、鸡蛋）"
+                        class="w-full pl-10 pr-4 py-2 border border-border-color rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-color/50 focus:border-primary-color bg-bg-primary text-text-primary transition-all">
+                    <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary"></i>
+                </div>
+                <button id="add-ingredient-manual" class="px-4 py-2 border border-primary-color text-primary-color bg-primary-light rounded-lg hover:bg-primary-color hover:text-white transition-colors">
+                    <i class="fa-solid fa-plus mr-1"></i>
+                    <span id="add-ingredient-text">手动添加食材</span>
+                </button>
+            </div>
+
+            <!-- 已选食材区 -->
+            <div class="mt-4">
+                <div class="flex items-center justify-between mb-2">
+                    <h3 class="text-sm font-medium text-text-secondary" id="selected-title">已选食材</h3>
+                    <button id="clear-selected" class="text-xs text-text-tertiary hover:text-warning-color transition-colors">
+                        <i class="fa-solid fa-trash mr-1"></i>
+                        <span id="clear-selected-text">清空</span>
+                    </button>
+                </div>
+                <div id="selected-ingredients" class="flex flex-wrap gap-2 max-h-20 overflow-y-auto p-2 bg-bg-secondary rounded-lg border border-border-color">
+                    <span class="text-text-tertiary text-sm w-full text-center" id="no-selected-text">暂无选中食材</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- 主体内容区 -->
+        <div class="flex flex-col lg:flex-row gap-6">
+            <!-- 左侧食材分类区（新增中西餐分类） -->
+            <aside class="w-full lg:w-80 bg-primary rounded-xl shadow-sm p-4 h-fit border border-border-color">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-lg font-bold flex items-center">
+                        <i class="fa-solid fa-carrot text-primary-color mr-2"></i>
+                        <span id="ingredient-category-title">食材分类</span>
+                    </h2>
+                    <div class="flex gap-2">
+                        <button id="cuisine-cn" class="px-2 py-1 rounded-lg bg-primary-light text-primary-color text-xs font-medium active">中餐</button>
+                        <button id="cuisine-en" class="px-2 py-1 rounded-lg bg-bg-tertiary text-text-secondary text-xs font-medium">西餐</button>
+                    </div>
+                </div>
+                <div id="ingredient-categories" class="space-y-3">
+                    <!-- 食材分类由JS动态生成 -->
+                </div>
+            </aside>
+
+            <!-- 右侧内容区 -->
+            <main class="flex-1 bg-primary rounded-xl shadow-sm p-6 min-h-[500px] border border-border-color">
+                <div id="guide-content" class="h-full flex flex-col items-center justify-center text-text-tertiary">
+                    <i class="fa-solid fa-magnifying-glass text-5xl mb-4"></i>
+                    <h2 class="text-xl mb-2" id="guide-title">请选择食材，查找适配菜谱</h2>
+                    <p class="text-sm" id="guide-desc">勾选家中现有食材，为你推荐最合适的菜品</p>
+                </div>
+
+                <div id="recipe-content" class="hidden">
+                    <!-- 筛选与排序栏 -->
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4 bg-bg-secondary p-3 rounded-lg border border-border-color">
+                        <div class="flex flex-wrap gap-3">
+                            <select id="time-filter" class="border border-border-color rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-color/50 bg-bg-primary text-text-primary">
+                                <option value="all" data-zh="全部时长" data-en="All Time">全部时长</option>
+                                <option value="10" data-zh="10分钟内" data-en="Within 10 mins">10分钟内</option>
+                                <option value="20" data-zh="10-20分钟" data-en="10-20 mins">10-20分钟</option>
+                                <option value="30" data-zh="20分钟以上" data-en="More than 20 mins">20分钟以上</option>
+                            </select>
+                            <select id="difficulty-filter" class="border border-border-color rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-color/50 bg-bg-primary text-text-primary">
+                                <option value="all" data-zh="全部难度" data-en="All Difficulty">全部难度</option>
+                                <option value="1" data-zh="简单" data-en="Easy">简单</option>
+                                <option value="2" data-zh="中等" data-en="Medium">中等</option>
+                                <option value="3" data-zh="复杂" data-en="Hard">复杂</option>
+                            </select>
+                            <select id="cuisine-filter" class="border border-border-color rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-color/50 bg-bg-primary text-text-primary">
+                                <option value="all" data-zh="全部菜系" data-en="All Cuisine">全部菜系</option>
+                                <option value="cn" data-zh="中餐" data-en="Chinese">中餐</option>
+                                <option value="en" data-zh="西餐" data-en="Western">西餐</option>
+                            </select>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-sm text-text-secondary" id="sort-text">排序：</span>
+                            <select id="sort-type" class="border border-border-color rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-color/50 bg-bg-primary text-text-primary">
+                                <option value="coverage" data-zh="食材覆盖率" data-en="Ingredient Coverage">食材覆盖率</option>
+                                <option value="time" data-zh="烹饪时长" data-en="Cooking Time">烹饪时长</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- 菜谱列表区 -->
+                    <div id="recipe-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <!-- 菜谱卡片由JS动态生成 -->
+                    </div>
+
+                    <!-- 加载骨架屏 -->
+                    <div id="recipe-skeleton" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 hidden">
+                        <div class="skeleton rounded-xl h-64"></div>
+                        <div class="skeleton rounded-xl h-64"></div>
+                        <div class="skeleton rounded-xl h-64"></div>
+                    </div>
+                </div>
+
+                <!-- 查找菜谱按钮 -->
+                <button id="find-recipes" class="fixed bottom-8 right-8 bg-primary-color text-white rounded-full w-16 h-16 flex items-center justify-center shadow-lg hover:bg-primary-light hover:text-primary-color border border-primary-color transition-all scale-hover z-10">
+                    <i class="fa-solid fa-magic-wand-sparkles text-xl"></i>
+                </button>
+            </main>
+        </div>
+
+        <!-- 手动添加食材弹窗 -->
+        <div id="add-ingredient-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden fade-in">
+            <div class="bg-primary rounded-xl w-full max-w-md p-6 slide-up border border-border-color">
+                <div class="flex justify-between items-start mb-4">
+                    <h2 class="text-xl font-bold" id="add-modal-title">手动添加食材</h2>
+                    <button id="close-add-modal" class="text-text-tertiary hover:text-text-primary text-xl transition-colors">
+                        <i class="fa-solid fa-times"></i>
+                    </button>
+                </div>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-text-secondary mb-1" id="ingredient-name-label">食材名称</label>
+                        <input type="text" id="manual-ingredient-name" class="w-full px-4 py-2 border border-border-color rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-color/50 focus:border-primary-color bg-bg-primary text-text-primary">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-text-secondary mb-1" id="ingredient-category-label">食材分类</label>
+                        <select id="manual-ingredient-category" class="w-full px-4 py-2 border border-border-color rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-color/50 focus:border-primary-color bg-bg-primary text-text-primary">
+                            <option value="vegetable" data-zh="蔬菜类" data-en="Vegetables">蔬菜类</option>
+                            <option value="meat" data-zh="肉类" data-en="Meat">肉类</option>
+                            <option value="egg" data-zh="蛋类" data-en="Eggs">蛋类</option>
+                            <option value="tofu" data-zh="豆制品" data-en="Tofu Products">豆制品</option>
+                            <option value="seasoning" data-zh="调味品" data-en="Seasoning">调味品</option>
+                            <option value="staple" data-zh="主食" data-en="Staple Food">主食</option>
+                            <option value="seafood" data-zh="海鲜类" data-en="Seafood">海鲜类</option>
+                            <option value="dairy" data-zh="乳制品" data-en="Dairy">乳制品</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-text-secondary mb-1" id="ingredient-cuisine-label">菜系分类</label>
+                        <select id="manual-ingredient-cuisine" class="w-full px-4 py-2 border border-border-color rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-color/50 focus:border-primary-color bg-bg-primary text-text-primary">
+                            <option value="cn" data-zh="中餐" data-en="Chinese">中餐</option>
+                            <option value="en" data-zh="西餐" data-en="Western">西餐</option>
+                        </select>
+                    </div>
+                    <button id="confirm-add-ingredient" class="w-full py-2 bg-primary-color text-white rounded-lg hover:bg-primary-light hover:text-primary-color border border-primary-color transition-colors">
+                        <span id="confirm-add-text">确认添加</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 登录/注册弹窗 -->
+        <div id="login-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden fade-in">
+            <div class="bg-primary rounded-xl w-full max-w-md p-6 slide-up border border-border-color">
+                <div class="flex justify-between items-start mb-4">
+                    <h2 class="text-xl font-bold" id="login-modal-title">登录/注册</h2>
+                    <button id="close-login-modal" class="text-text-tertiary hover:text-text-primary text-xl transition-colors">
+                        <i class="fa-solid fa-times"></i>
+                    </button>
+                </div>
+                <div class="mb-4 border-b border-border-color pb-4">
+                    <div class="flex gap-2">
+                        <button id="login-tab" class="px-4 py-2 font-medium text-primary-color border-b-2 border-primary-color">
+                            <span id="login-tab-text">登录</span>
+                        </button>
+                        <button id="register-tab" class="px-4 py-2 font-medium text-text-tertiary">
+                            <span id="register-tab-text">注册</span>
+                        </button>
+                    </div>
+                </div>
+                <!-- 登录表单 -->
+                <div id="login-form" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-text-secondary mb-1" id="username-label">用户名/手机号</label>
+                        <input type="text" id="login-username" class="w-full px-4 py-2 border border-border-color rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-color/50 focus:border-primary-color bg-bg-primary text-text-primary">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-text-secondary mb-1" id="password-label">密码</label>
+                        <input type="password" id="login-password" class="w-full px-4 py-2 border border-border-color rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-color/50 focus:border-primary-color bg-bg-primary text-text-primary">
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <label class="flex items-center gap-2 text-sm text-text-secondary">
+                            <input type="checkbox" class="w-4 h-4 text-primary-color rounded border-border-color focus:ring-primary-color/50">
+                            <span id="remember-text">记住我</span>
+                        </label>
+                        <a href="#" class="text-sm text-primary-color hover:underline" id="forgot-pwd-text">忘记密码？</a>
+                    </div>
+                    <button id="do-login" class="w-full py-2 bg-primary-color text-white rounded-lg hover:bg-primary-light hover:text-primary-color border border-primary-color transition-colors">
+                        <span id="do-login-text">登录</span>
+                    </button>
+                </div>
+                <!-- 注册表单（默认隐藏） -->
+                <div id="register-form" class="space-y-4 hidden">
+                    <div>
+                        <label class="block text-sm font-medium text-text-secondary mb-1" id="reg-username-label">用户名</label>
+                        <input type="text" id="reg-username" class="w-full px-4 py-2 border border-border-color rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-color/50 focus:border-primary-color bg-bg-primary text-text-primary">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-text-secondary mb-1" id="reg-phone-label">手机号</label>
+                        <input type="tel" id="reg-phone" class="w-full px-4 py-2 border border-border-color rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-color/50 focus:border-primary-color bg-bg-primary text-text-primary">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-text-secondary mb-1" id="reg-password-label">设置密码</label>
+                        <input type="password" id="reg-password" class="w-full px-4 py-2 border border-border-color rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-color/50 focus:border-primary-color bg-bg-primary text-text-primary">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-text-secondary mb-1" id="reg-code-label">验证码</label>
+                        <div class="flex gap-2">
+                            <input type="text" id="reg-code" class="flex-1 px-4 py-2 border border-border-color rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-color/50 focus:border-primary-color bg-bg-primary text-text-primary">
+                            <button id="get-code" class="px-4 py-2 bg-bg-tertiary text-text-primary rounded-lg hover:bg-border-color transition-colors">
+                                <span id="get-code-text">获取验证码</span>
+                            </button>
+                        </div>
+                    </div>
+                    <button id="do-register" class="w-full py-2 bg-primary-color text-white rounded-lg hover:bg-primary-light hover:text-primary-color border border-primary-color transition-colors">
+                        <span id="do-register-text">注册</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 个人中心弹窗 -->
+        <div id="profile-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden fade-in">
+            <div class="bg-primary rounded-xl w-full max-w-md p-6 slide-up border border-border-color">
+                <div class="flex justify-between items-start mb-4">
+                    <h2 class="text-xl font-bold" id="profile-modal-title">个人中心</h2>
+                    <button id="close-profile-modal" class="text-text-tertiary hover:text-text-primary text-xl transition-colors">
+                        <i class="fa-solid fa-times"></i>
+                    </button>
+                </div>
+                <div class="text-center mb-6">
+                    <div class="w-20 h-20 rounded-full bg-primary-light mx-auto flex items-center justify-center mb-2">
+                        <i class="fa-solid fa-user text-4xl text-primary-color"></i>
+                    </div>
+                    <h3 class="text-lg font-bold" id="profile-username">游客</h3>
+                    <p class="text-sm text-text-tertiary" id="profile-desc">未登录，登录后可收藏菜谱</p>
+                </div>
+                <div class="space-y-2">
+                    <button id="profile-logout" class="w-full py-2 bg-bg-tertiary text-text-primary rounded-lg hover:bg-border-color transition-colors flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-sign-out"></i>
+                        <span id="logout-text">退出登录</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 菜谱详情弹窗 -->
+        <div id="recipe-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden fade-in">
+            <div class="bg-primary rounded-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto p-6 slide-up border border-border-color">
+                <div class="flex justify-between items-start mb-4">
+                    <h2 id="modal-title" class="text-2xl font-bold"></h2>
+                    <div class="flex gap-2">
+                        <button id="collect-recipe" class="text-text-tertiary hover:text-warning-color transition-colors">
+                            <i class="fa-solid fa-star"></i>
+                            <span id="collect-text">收藏</span>
+                        </button>
+                        <button id="close-modal" class="text-text-tertiary hover:text-text-primary text-xl transition-colors">
+                            <i class="fa-solid fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 菜谱基础信息 -->
+                <div class="flex flex-wrap gap-4 mb-6 text-sm">
+                    <div class="flex items-center gap-1 text-text-secondary">
+                        <i class="fa-solid fa-clock text-primary-color"></i>
+                        <span id="modal-time"></span>
+                    </div>
+                    <div class="flex items-center gap-1 text-text-secondary">
+                        <i class="fa-solid fa-signal text-primary-color"></i>
+                        <span id="modal-difficulty"></span>
+                    </div>
+                    <div class="flex items-center gap-1 text-text-secondary">
+                        <i class="fa-solid fa-flavor text-primary-color"></i>
+                        <span id="modal-taste"></span>
+                    </div>
+                    <div class="flex items-center gap-1 text-text-secondary">
+                        <i class="fa-solid fa-utensils text-primary-color"></i>
+                        <span id="modal-cuisine"></span>
+                    </div>
+                    <div class="flex items-center gap-1 text-primary-color font-medium">
+                        <i class="fa-solid fa-check-circle"></i>
+                        <span id="modal-coverage"></span>
+                    </div>
+                </div>
+
+                <!-- 食材清单 -->
+                <div class="mb-6">
+                    <h3 class="text-lg font-bold mb-3 flex items-center">
+                        <i class="fa-solid fa-list-ul text-primary-color mr-2"></i>
+                        <span id="ingredient-list-title">食材清单</span>
+                    </h3>
+                    <div id="modal-ingredients" class="grid grid-cols-1 md:grid-cols-2 gap-2 bg-bg-secondary p-3 rounded-lg border border-border-color">
+                        <!-- 食材清单由JS动态生成 -->
+                    </div>
+                </div>
+
+                <!-- 烹饪步骤 -->
+                <div class="mb-6">
+                    <h3 class="text-lg font-bold mb-3 flex items-center">
+                        <i class="fa-solid fa-clipboard-list text-primary-color mr-2"></i>
+                        <span id="cooking-steps-title">烹饪步骤</span>
+                    </h3>
+                    <div id="modal-steps" class="space-y-4 bg-bg-secondary p-4 rounded-lg border border-border-color">
+                        <!-- 烹饪步骤由JS动态生成 -->
+                    </div>
+                </div>
+
+                <!-- 烹饪小贴士 -->
+                <div>
+                    <h3 class="text-lg font-bold mb-3 flex items-center">
+                        <i class="fa-solid fa-lightbulb text-primary-color mr-2"></i>
+                        <span id="tips-title">烹饪小贴士</span>
+                    </h3>
+                    <p id="modal-tips" class="text-text-secondary bg-bg-secondary p-3 rounded-lg border border-border-color"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 提示消息组件 -->
+        <div id="toast" class="fixed top-4 right-4 px-4 py-2 rounded-lg text-white font-medium z-50 hidden fade-in"></div>
+
+        <!-- 页脚（浏览量统计 + 版权信息） -->
+        <footer class="mt-10 bg-primary rounded-xl shadow-sm p-6 border border-border-color">
+            <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+                <div class="text-text-tertiary text-sm">
+                    <p id="copyright-text">© 2025 食尽其用 - 食材倒推菜谱工具 版权所有</p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <div class="flex items-center gap-2 text-text-secondary">
+                        <i class="fa-solid fa-eye text-primary-color"></i>
+                        <span id="view-count-text">网站总浏览量：</span>
+                        <span class="font-medium text-primary-color" id="view-count">12,589</span>
+                    </div>
+                    <div class="flex items-center gap-2 text-text-secondary">
+                        <i class="fa-solid fa-users text-primary-color"></i>
+                        <span id="user-count-text">累计用户：</span>
+                        <span class="font-medium text-primary-color" id="user-count">2,345</span>
+                    </div>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        // ===================== 全局配置与多语言 =====================
+        const langConfig = {
+            zh: {
+                siteTitle: "食尽其用",
+                ingredientSearchPlaceholder: "搜索食材（如：番茄、鸡蛋）",
+                addIngredientText: "手动添加食材",
+                selectedTitle: "已选食材",
+                clearSelectedText: "清空",
+                noSelectedText: "暂无选中食材",
+                ingredientCategoryTitle: "食材分类",
+                guideTitle: "请选择食材，查找适配菜谱",
+                guideDesc: "勾选家中现有食材，为你推荐最合适的菜品",
+                sortText: "排序：",
+                addModalTitle: "手动添加食材",
+                ingredientNameLabel: "食材名称",
+                ingredientCategoryLabel: "食材分类",
+                ingredientCuisineLabel: "菜系分类",
+                confirmAddText: "确认添加",
+                loginModalTitle: "登录/注册",
+                loginTabText: "登录",
+                registerTabText: "注册",
+                usernameLabel: "用户名/手机号",
+                passwordLabel: "密码",
+                rememberText: "记住我",
+                forgotPwdText: "忘记密码？",
+                doLoginText: "登录",
+                regUsernameLabel: "用户名",
+                regPhoneLabel: "手机号",
+                regPasswordLabel: "设置密码",
+                regCodeLabel: "验证码",
+                getCodeText: "获取验证码",
+                doRegisterText: "注册",
+                profileModalTitle: "个人中心",
+                profileDesc: "未登录，登录后可收藏菜谱",
+                logoutText: "退出登录",
+                collectText: "收藏",
+                ingredientListTitle: "食材清单",
+                cookingStepsTitle: "烹饪步骤",
+                tipsTitle: "烹饪小贴士",
+                copyrightText: "© 2025 食尽其用 - 食材倒推菜谱工具 版权所有",
+                viewCountText: "网站总浏览量：",
+                userCountText: "累计用户：",
+                userBtnText: "登录/注册",
+                allTime: "全部时长",
+                within10: "10分钟内",
+                tenToTwenty: "10-20分钟",
+                moreThan20: "20分钟以上",
+                allDifficulty: "全部难度",
+                easy: "简单",
+                medium: "中等",
+                hard: "复杂",
+                allCuisine: "全部菜系",
+                chinese: "中餐",
+                western: "西餐",
+                ingredientCoverage: "食材覆盖率",
+                cookingTime: "烹饪时长",
+                minutes: "分钟",
+                coverage: "食材覆盖率",
+                taste: "口味：",
+                cuisine: "菜系：",
+                noRecipeText: "未找到匹配的菜谱",
+                pleaseSelectIngredient: "请至少选择一种食材",
+                ingredientAdded: "食材添加成功",
+                loginSuccess: "登录成功",
+                registerSuccess: "注册成功",
+                collectSuccess: "收藏成功",
+                collectCancel: "取消收藏",
+                searchNoResult: "未找到该食材",
+                inputIngredientName: "请输入食材名称"
+            },
+            en: {
+                siteTitle: "Use Up Ingredients",
+                ingredientSearchPlaceholder: "Search ingredients (e.g. Tomato, Egg)",
+                addIngredientText: "Add Ingredient Manually",
+                selectedTitle: "Selected Ingredients",
+                clearSelectedText: "Clear All",
+                noSelectedText: "No ingredients selected",
+                ingredientCategoryTitle: "Ingredient Categories",
+                guideTitle: "Select ingredients to find recipes",
+                guideDesc: "Check the ingredients you have at home and get the most suitable recipes",
+                sortText: "Sort by：",
+                addModalTitle: "Add Ingredient Manually",
+                ingredientNameLabel: "Ingredient Name",
+                ingredientCategoryLabel: "Ingredient Category",
+                ingredientCuisineLabel: "Cuisine Type",
+                confirmAddText: "Confirm Add",
+                loginModalTitle: "Login/Register",
+                loginTabText: "Login",
+                registerTabText: "Register",
+                usernameLabel: "Username/Phone",
+                passwordLabel: "Password",
+                rememberText: "Remember Me",
+                forgotPwdText: "Forgot Password?",
+                doLoginText: "Login",
+                regUsernameLabel: "Username",
+                regPhoneLabel: "Phone Number",
+                regPasswordLabel: "Set Password",
+                regCodeLabel: "Verification Code",
+                getCodeText: "Get Code",
+                doRegisterText: "Register",
+                profileModalTitle: "Personal Center",
+                profileDesc: "Not logged in, login to collect recipes",
+                logoutText: "Logout",
+                collectText: "Collect",
+                ingredientListTitle: "Ingredient List",
+                cookingStepsTitle: "Cooking Steps",
+                tipsTitle: "Cooking Tips",
+                copyrightText: "© 2025 Use Up Ingredients - Recipe Tool All Rights Reserved",
+                viewCountText: "Total Views：",
+                userCountText: "Total Users：",
+                userBtnText: "Login/Register",
+                allTime: "All Time",
+                within10: "Within 10 mins",
+                tenToTwenty: "10-20 mins",
+                moreThan20: "More than 20 mins",
+                allDifficulty: "All Difficulty",
+                easy: "Easy",
+                medium: "Medium",
+                hard: "Hard",
+                allCuisine: "All Cuisine",
+                chinese: "Chinese",
+                western: "Western",
+                ingredientCoverage: "Ingredient Coverage",
+                cookingTime: "Cooking Time",
+                minutes: "mins",
+                coverage: "Ingredient Coverage",
+                taste: "Taste：",
+                cuisine: "Cuisine：",
+                noRecipeText: "No matching recipes found",
+                pleaseSelectIngredient: "Please select at least one ingredient",
+                ingredientAdded: "Ingredient added successfully",
+                loginSuccess: "Login successful",
+                registerSuccess: "Register successful",
+                collectSuccess: "Collected successfully",
+                collectCancel: "Cancel collect",
+                searchNoResult: "Ingredient not found",
+                inputIngredientName: "Please enter ingredient name"
+            }
+        };
+
+        // 当前语言
+        let currentLang = "zh";
+        // 当前主题
+        let currentTheme = "light";
+        // 当前菜系
+        let currentCuisine = "cn";
+        // 登录状态
+        let isLogin = false;
+        // 已选食材（含手动添加）
+        let selectedIngredients = new Set();
+        // 手动添加的自定义食材
+        let customIngredients = [];
+        // 浏览量（模拟递增）
+        let viewCount = 12589;
+
+        // ===================== 海量食材数据（含中西餐） =====================
+        const ingredientData = {
+            cn: {
+                categories: [
+                    {
+                        id: 1,
+                        name: { zh: "蔬菜类", en: "Vegetables" },
+                        isExpand: true,
+                        ingredients: [
+                            { id: 101, name: { zh: "番茄", en: "Tomato" }, cuisine: "cn" },
+                            { id: 102, name: { zh: "黄瓜", en: "Cucumber" }, cuisine: "cn" },
+                            { id: 103, name: { zh: "青菜", en: "Green Vegetables" }, cuisine: "cn" },
+                            { id: 104, name: { zh: "土豆", en: "Potato" }, cuisine: "cn" },
+                            { id: 105, name: { zh: "青椒", en: "Green Pepper" }, cuisine: "cn" },
+                            { id: 106, name: { zh: "胡萝卜", en: "Carrot" }, cuisine: "cn" },
+                            { id: 107, name: { zh: "西兰花", en: "Broccoli" }, cuisine: "cn" },
+                            { id: 108, name: { zh: "白菜", en: "Chinese Cabbage" }, cuisine: "cn" },
+                            { id: 109, name: { zh: "菠菜", en: "Spinach" }, cuisine: "cn" },
+                            { id: 110, name: { zh: "芹菜", en: "Celery" }, cuisine: "cn" },
+                            { id: 111, name: { zh: "韭菜", en: "Chives" }, cuisine: "cn" },
+                            { id: 112, name: { zh: "洋葱", en: "Onion" }, cuisine: "cn" },
+                            { id: 113, name: { zh: "大蒜", en: "Garlic" }, cuisine: "cn" },
+                            { id: 114, name: { zh: "生姜", en: "Ginger" }, cuisine: "cn" },
+                            { id: 115, name: { zh: "大葱", en: "Green Onion" }, cuisine: "cn" }
+                        ]
+                    },
+                    {
+                        id: 2,
+                        name: { zh: "肉类", en: "Meat" },
+                        isExpand: true,
+                        ingredients: [
+                            { id: 201, name: { zh: "猪肉", en: "Pork" }, cuisine: "cn" },
+                            { id: 202, name: { zh: "牛肉", en: "Beef" }, cuisine: "cn" },
+                            { id: 203, name: { zh: "鸡肉", en: "Chicken" }, cuisine: "cn" },
+                            { id: 204, name: { zh: "羊肉", en: "Lamb" }, cuisine: "cn" },
+                            { id: 205, name: { zh: "鱼肉", en: "Fish" }, cuisine: "cn" },
+                            { id: 206, name: { zh: "排骨", en: "Pork Ribs" }, cuisine: "cn" },
+                            { id: 207, name: { zh: "五花肉", en: "Pork Belly" }, cuisine: "cn" }
+                        ]
+                    },
+                    {
+                        id: 3,
+                        name: { zh: "蛋类", en: "Eggs" },
+                        isExpand: true,
+                        ingredients: [
+                            { id: 301, name: { zh: "鸡蛋", en: "Egg" }, cuisine: "cn" },
+                            { id: 302, name: { zh: "鸭蛋", en: "Duck Egg" }, cuisine: "cn" },
+                            { id: 303, name: { zh: "鹅蛋", en: "Goose Egg" }, cuisine: "cn" }
+                        ]
+                    },
+                    {
+                        id: 4,
+                        name: { zh: "豆制品", en: "Tofu Products" },
+                        isExpand: true,
+                        ingredients: [
+                            { id: 401, name: { zh: "豆腐", en: "Tofu" }, cuisine: "cn" },
+                            { id: 402, name: { zh: "豆浆", en: "Soy Milk" }, cuisine: "cn" },
+                            { id: 403, name: { zh: "腐竹", en: "Yuba" }, cuisine: "cn" },
+                            { id: 404, name: { zh: "豆干", en: "Dried Tofu" }, cuisine: "cn" }
+                        ]
+                    },
+                    {
+                        id: 5,
+                        name: { zh: "调味品", en: "Seasoning" },
+                        isExpand: true,
+                        ingredients: [
+                            { id: 501, name: { zh: "盐", en: "Salt" }, cuisine: "cn" },
+                            { id: 502, name: { zh: "食用油", en: "Cooking Oil" }, cuisine: "cn" },
+                            { id: 503, name: { zh: "生抽", en: "Light Soy Sauce" }, cuisine: "cn" },
+                            { id: 504, name: { zh: "料酒", en: "Cooking Wine" }, cuisine: "cn" },
+                            { id: 505, name: { zh: "老抽", en: "Dark Soy Sauce" }, cuisine: "cn" },
+                            { id: 506, name: { zh: "醋", en: "Vinegar" }, cuisine: "cn" },
+                            { id: 507, name: { zh: "糖", en: "Sugar" }, cuisine: "cn" },
+                            { id: 508, name: { zh: "味精", en: "MSG" }, cuisine: "cn" },
+                            { id: 509, name: { zh: "鸡精", en: "Chicken Essence" }, cuisine: "cn" },
+                            { id: 510, name: { zh: "辣椒", en: "Chili" }, cuisine: "cn" }
+                        ]
+                    },
+                    {
+                        id: 6,
+                        name: { zh: "主食", en: "Staple Food" },
+                        isExpand: true,
+                        ingredients: [
+                            { id: 601, name: { zh: "大米", en: "Rice" }, cuisine: "cn" },
+                            { id: 602, name: { zh: "面条", en: "Noodles" }, cuisine: "cn" },
+                            { id: 603, name: { zh: "馒头", en: "Steamed Bun" }, cuisine: "cn" },
+                            { id: 604, name: { zh: "饺子", en: "Dumplings" }, cuisine: "cn" },
+                            { id: 605, name: { zh: "包子", en: "Steamed Stuffed Bun" }, cuisine: "cn" }
+                        ]
+                    },
+                    {
+                        id: 7,
+                        name: { zh: "海鲜类", en: "Seafood" },
+                        isExpand: true,
+                        ingredients: [
+                            { id: 701, name: { zh: "虾", en: "Shrimp" }, cuisine: "cn" },
+                            { id: 702, name: { zh: "蟹", en: "Crab" }, cuisine: "cn" },
+                            { id: 703, name: { zh: "扇贝", en: "Scallop" }, cuisine: "cn" },
+                            { id: 704, name: { zh: "鱿鱼", en: "Squid" }, cuisine: "cn" }
+                        ]
+                    }
+                ]
+            },
+            en: {
+                categories: [
+                    {
+                        id: 1,
+                        name: { zh: "蔬菜类", en: "Vegetables" },
+                        isExpand: true,
+                        ingredients: [
+                            { id: 121, name: { zh: "牛油果", en: "Avocado" }, cuisine: "en" },
+                            { id: 122, name: { zh: "彩椒", en: "Bell Pepper" }, cuisine: "en" },
+                            { id: 123, name: { zh: "蘑菇", en: "Mushroom" }, cuisine: "en" },
+                            { id: 124, name: { zh: "芦笋", en: "Asparagus" }, cuisine: "en" },
+                            { id: 125, name: { zh: "西葫芦", en: "Zucchini" }, cuisine: "en" },
+                            { id: 126, name: { zh: "生菜", en: "Lettuce" }, cuisine: "en" },
+                            { id: 127, name: { zh: "番茄", en: "Tomato" }, cuisine: "en" },
+                            { id: 128, name: { zh: "洋葱", en: "Onion" }, cuisine: "en" }
+                        ]
+                    },
+                    {
+                        id: 2,
+                        name: { zh: "肉类", en: "Meat" },
+                        isExpand: true,
+                        ingredients: [
+                            { id: 221, name: { zh: "牛排", en: "Beef Steak" }, cuisine: "en" },
+                            { id: 222, name: { zh: "鸡胸肉", en: "Chicken Breast" }, cuisine: "en" },
+                            { id: 223, name: { zh: "培根", en: "Bacon" }, cuisine: "en" },
+                            { id: 224, name: { zh: "香肠", en: "Sausage" }, cuisine: "en" },
+                            { id: 225, name: { zh: "三文鱼", en: "Salmon" }, cuisine: "en" }
+                        ]
+                    },
+                    {
+                        id: 3,
+                        name: { zh: "乳制品", en: "Dairy" },
+                        isExpand: true,
+                        ingredients: [
+                            { id: 321, name: { zh: "黄油", en: "Butter" }, cuisine: "en" },
+                            { id: 322, name: { zh: "芝士", en: "Cheese" }, cuisine: "en" },
+                            { id: 323, name: { zh: "牛奶", en: "Milk" }, cuisine: "en" },
+                            { id: 324, name: { zh: "淡奶油", en: "Whipping Cream" }, cuisine: "en" },
+                            { id: 325, name: { zh: "酸奶", en: "Yogurt" }, cuisine: "en" }
+                        ]
+                    },
+                    {
+                        id: 4,
+                        name: { zh: "调味品", en: "Seasoning" },
+                        isExpand: true,
+                        ingredients: [
+                            { id: 521, name: { zh: "盐", en: "Salt" }, cuisine: "en" },
+                            { id: 522, name: { zh: "黑胡椒", en: "Black Pepper" }, cuisine: "en" },
+                            { id: 523, name: { zh: "橄榄油", en: "Olive Oil" }, cuisine: "en" },
+                            { id: 524, name: { zh: "意式番茄酱", en: "Italian Tomato Sauce" }, cuisine: "en" },
+                            { id: 525, name: { zh: "蜂蜜", en: "Honey" }, cuisine: "en" },
+                            { id: 526, name: { zh: "芥末", en: "Mustard" }, cuisine: "en" },
+                            { id: 527, name: { zh: "迷迭香", en: "Rosemary" }, cuisine: "en" },
+                            { id: 528, name: { zh: "百里香", en: "Thyme" }, cuisine: "en" }
+                        ]
+                    },
+                    {
+                        id: 5,
+                        name: { zh: "主食", en: "Staple Food" },
+                        isExpand: true,
+                        ingredients: [
+                            { id: 621, name: { zh: "意面", en: "Pasta" }, cuisine: "en" },
+                            { id: 622, name: { zh: "面包", en: "Bread" }, cuisine: "en" },
+                            { id: 623, name: { zh: "土豆泥", en: "Mashed Potato" }, cuisine: "en" },
+                            { id: 624, name: { zh: "披萨饼底", en: "Pizza Crust" }, cuisine: "en" }
+                        ]
+                    }
+                ]
+            }
+        };
+
+        // ===================== 海量菜谱数据（含中西餐，步骤更详细） =====================
+        const recipeData = [
+            // 中餐菜谱
+            {
+                id: 1,
+                title: { zh: "番茄炒蛋", en: "Scrambled Eggs with Tomato" },
+                thumbnail: "https://picsum.photos/id/292/400/300",
+                cookTime: 12,
+                difficulty: 1,
+                taste: { zh: "清淡", en: "Light" },
+                cuisine: { zh: "中餐", en: "Chinese" },
+                cuisineType: "cn",
+                ingredients: [
+                    { id: 101, name: { zh: "番茄", en: "Tomato" }, amount: { zh: "2个", en: "2 pcs" } },
+                    { id: 301, name: { zh: "鸡蛋", en: "Egg" }, amount: { zh: "2个", en: "2 pcs" } },
+                    { id: 501, name: { zh: "盐", en: "Salt" }, amount: { zh: "少许", en: "A pinch" } },
+                    { id: 502, name: { zh: "食用油", en: "Cooking Oil" }, amount: { zh: "1勺", en: "1 tbsp" } },
+                    { id: 507, name: { zh: "糖", en: "Sugar" }, amount: { zh: "半勺", en: "0.5 tbsp" } }
+                ],
+                steps: [
+                    { zh: "番茄洗净，顶部划十字刀，用开水烫10秒，撕去外皮后切成小块（不撕皮也可，根据个人喜好）", en: "Wash the tomatoes, cut a cross on the top, scald with boiling water for 10 seconds, peel off the skin and cut into small pieces (peeling is optional)" },
+                    { zh: "鸡蛋打入碗中，加入少许盐和1勺温水，充分搅匀，这样炒出来的鸡蛋更嫩滑", en: "Crack eggs into a bowl, add a pinch of salt and 1 tbsp warm water, stir well for tender scrambled eggs" },
+                    { zh: "热锅倒入食用油，油温烧至6成热（手放上方能感觉到热气），倒入蛋液", en: "Heat cooking oil in a pan until 60% hot (feel the heat above the pan), pour in the egg liquid" },
+                    { zh: "待蛋液底部凝固，用铲子轻轻推散，炒至8成熟盛出备用，不要炒太老", en: "When the bottom of the egg liquid solidifies, gently push it apart with a spatula, fry until 80% done and set aside" },
+                    { zh: "锅中留少许底油，放入番茄块，中小火翻炒2分钟至番茄出汁，加入半勺糖中和酸味", en: "Leave a little oil in the pan, add tomato pieces, stir-fry on medium-low heat for 2 minutes until juicy, add 0.5 tbsp sugar to balance sourness" },
+                    { zh: "倒入炒好的鸡蛋，翻炒均匀，根据口味加入适量盐调味，翻炒1分钟即可出锅", en: "Pour in the scrambled eggs, stir well, add salt to taste, stir-fry for 1 minute and serve" }
+                ],
+                tips: { zh: "1. 番茄炒至出汁更入味，可根据喜好加入少许番茄酱提色；2. 鸡蛋不要炒太老，保持嫩滑口感；3. 糖的用量可根据番茄的酸度调整", en: "1. Fry tomatoes until juicy for better flavor, add a little tomato sauce for color if desired; 2. Do not overcook eggs to keep tender; 3. Adjust sugar amount according to tomato sourness" }
+            },
+            {
+                id: 2,
+                title: { zh: "清炒青菜", en: "Stir-Fried Green Vegetables" },
+                thumbnail: "https://picsum.photos/id/139/400/300",
+                cookTime: 8,
+                difficulty: 1,
+                taste: { zh: "清淡", en: "Light" },
+                cuisine: { zh: "中餐", en: "Chinese" },
+                cuisineType: "cn",
+                ingredients: [
+                    { id: 103, name: { zh: "青菜", en: "Green Vegetables" }, amount: { zh: "300g", en: "300g" } },
+                    { id: 501, name: { zh: "盐", en: "Salt" }, amount: { zh: "少许", en: "A pinch" } },
+                    { id: 502, name: { zh: "食用油", en: "Cooking Oil" }, amount: { zh: "1勺", en: "1 tbsp" } },
+                    { id: 113, name: { zh: "大蒜", en: "Garlic" }, amount: { zh: "2瓣", en: "2 cloves" } }
+                ],
+                steps: [
+                    { zh: "青菜摘去老叶和根部，放入清水中浸泡5分钟，洗净后沥干水分，菜梗与菜叶分开切段", en: "Remove old leaves and roots from green vegetables, soak in water for 5 minutes, wash and drain, cut stems and leaves separately" },
+                    { zh: "大蒜去皮切成蒜末备用", en: "Peel garlic and chop into minced garlic" },
+                    { zh: "热锅倒入食用油，油温烧至7成热，放入蒜末爆香（约10秒）", en: "Heat cooking oil in a pan until 70% hot, add minced garlic and sauté for 10 seconds" },
+                    { zh: "先放入菜梗翻炒30秒，炒至菜梗微微变软", en: "Add vegetable stems first, stir-fry for 30 seconds until slightly soft" },
+                    { zh: "加入菜叶继续翻炒至变软（约1分钟），期间可沿锅边淋少许清水，防止粘锅", en: "Add vegetable leaves, stir-fry until soft (about 1 minute), pour a little water along the pan edge to prevent sticking" },
+                    { zh: "加入适量盐调味，翻炒均匀后即可出锅装盘", en: "Add salt to taste, stir well and serve" }
+                ],
+                tips: { zh: "1. 青菜翻炒时间不宜过长，避免营养流失和口感变差；2. 炒的时候火要大，快速翻炒；3. 可加入少许鸡精提鲜，口味更丰富", en: "1. Do not stir-fry green vegetables for too long to avoid nutrient loss and tough texture; 2. Use high heat for quick stir-frying; 3. Add a little chicken essence for better flavor" }
+            },
+            {
+                id: 3,
+                title: { zh: "土豆丝炒肉", en: "Shredded Potato with Pork" },
+                thumbnail: "https://picsum.photos/id/488/400/300",
+                cookTime: 18,
+                difficulty: 2,
+                taste: { zh: "鲜香", en: "Savory" },
+                cuisine: { zh: "中餐", en: "Chinese" },
+                cuisineType: "cn",
+                ingredients: [
+                    { id: 104, name: { zh: "土豆", en: "Potato" }, amount: { zh: "1个（约200g）", en: "1 pc (about 200g)" } },
+                    { id: 201, name: { zh: "猪肉", en: "Pork" }, amount: { zh: "100g", en: "100g" } },
+                    { id: 501, name: { zh: "盐", en: "Salt" }, amount: { zh: "少许", en: "A pinch" } },
+                    { id: 502, name: { zh: "食用油", en: "Cooking Oil" }, amount: { zh: "1勺", en: "1 tbsp" } },
+                    { id: 503, name: { zh: "生抽", en: "Light Soy Sauce" }, amount: { zh: "1勺", en: "1 tbsp" } },
+                    { id: 504, name: { zh: "料酒", en: "Cooking Wine" }, amount: { zh: "半勺", en: "0.5 tbsp" } },
+                    { id: 112, name: { zh: "洋葱", en: "Onion" }, amount: { zh: "半个", en: "0.5 pc" } },
+                    { id: 510, name: { zh: "辣椒", en: "Chili" }, amount: { zh: "1个（可选）", en: "1 pc (optional)" } }
+                ],
+                steps: [
+                    { zh: "土豆去皮，切成均匀的细丝（约0.3cm宽），放入清水中浸泡10分钟，期间换2次水，去除淀粉", en: "Peel potato, cut into even shreds (about 0.3cm wide), soak in water for 10 minutes, change water twice to remove starch" },
+                    { zh: "猪肉切成细丝，放入碗中，加入半勺料酒、半勺生抽、少许盐，抓匀腌制10分钟", en: "Cut pork into shreds, put in a bowl, add 0.5 tbsp cooking wine, 0.5 tbsp light soy sauce, a pinch of salt, mix well and marinate for 10 minutes" },
+                    { zh: "洋葱切丝，辣椒切圈备用", en: "Shred onion, slice chili (optional)" },
+                    { zh: "土豆丝捞出沥干水分，用厨房纸吸干表面水分（防止炒的时候粘锅）", en: "Drain potato shreds, dry surface with kitchen paper to prevent sticking" },
+                    { zh: "热锅倒入食用油，油温烧至6成热，放入腌制好的肉丝翻炒至变色（约1分钟），盛出备用", en: "Heat cooking oil in a pan until 60% hot, add marinated pork shreds, stir-fry until color changes (about 1 minute), set aside" },
+                    { zh: "锅中留少许底油，放入洋葱丝和辣椒圈爆香（约30秒）", en: "Leave a little oil in the pan, add onion shreds and chili, sauté for 30 seconds" },
+                    { zh: "放入土豆丝，大火翻炒2分钟，期间沿锅边淋少许清水，保持土豆丝脆爽", en: "Add potato shreds, stir-fry on high heat for 2 minutes, pour a little water along the pan edge to keep crisp" },
+                    { zh: "加入半勺生抽和适量盐调味，翻炒均匀", en: "Add 0.5 tbsp light soy sauce and salt to taste, stir well" },
+                    { zh: "倒入炒好的肉丝，翻炒均匀后即可出锅", en: "Pour in the pork shreds, stir well and serve" }
+                ],
+                tips: { zh: "1. 土豆丝浸泡后口感更脆，炒的时候火要大，避免粘锅；2. 肉丝腌制时可加入少许淀粉，口感更嫩；3. 喜欢酸口的可加入少许醋翻炒", en: "1. Soaking potato shreds makes them crispier, use high heat to avoid sticking; 2. Add a little starch when marinating pork for tender texture; 3. Add a little vinegar for sour taste if desired" }
+            },
+            // 西餐菜谱
+            {
+                id: 4,
+                title: { zh: "香煎牛排", en: "Pan-Fried Steak" },
+                thumbnail: "https://picsum.photos/id/8/400/300",
+                cookTime: 15,
+                difficulty: 2,
+                taste: { zh: "鲜香", en: "Savory" },
+                cuisine: { zh: "西餐", en: "Western" },
+                cuisineType: "en",
+                ingredients: [
+                    { id: 221, name: { zh: "牛排", en: "Beef Steak" }, amount: { zh: "1块（约200g）", en: "1 pc (about 200g)" } },
+                    { id: 521, name: { zh: "盐", en: "Salt" }, amount: { zh: "少许", en: "A pinch" } },
+                    { id: 522, name: { zh: "黑胡椒", en: "Black Pepper" }, amount: { zh: "少许", en: "A pinch" } },
+                    { id: 523, name: { zh: "橄榄油", en: "Olive Oil" }, amount: { zh: "2勺", en: "2 tbsp" } },
+                    { id: 321, name: { zh: "黄油", en: "Butter" }, amount: { zh: "1小块", en: "1 small pc" } },
+                    { id: 527, name: { zh: "迷迭香", en: "Rosemary" }, amount: { zh: "1小枝（可选）", en: "1 sprig (optional)" } },
+                    { id: 112, name: { zh: "洋葱", en: "Onion" }, amount: { zh: "1/4个（可选）", en: "1/4 pc (optional)" } }
+                ],
+                steps: [
+                    { zh: "牛排提前从冰箱取出，放置室温（约30分钟），用厨房纸吸干表面血水", en: "Take steak out of the fridge in advance, bring to room temperature (about 30 minutes), dry surface blood with kitchen paper" },
+                    { zh: "在牛排两面均匀撒上盐和黑胡椒，轻轻按压，腌制10分钟", en: "Sprinkle salt and black pepper evenly on both sides of the steak, press gently, marinate for 10 minutes" },
+                    { zh: "平底锅烧热，倒入橄榄油，油温烧至冒烟前（约180℃）", en: "Heat a pan, pour in olive oil, heat until just before smoking (about 180℃)" },
+                    { zh: "放入牛排，中火煎制：三分熟煎1.5分钟/面，五分熟煎2分钟/面，七分熟煎2.5分钟/面", en: "Add steak, fry on medium heat: 1.5 mins/side for rare, 2 mins/side for medium-rare, 2.5 mins/side for medium" },
+                    { zh: "煎至一面定型后翻面，放入黄油、迷迭香和洋葱块（可选）", en: "Flip steak when one side is set, add butter, rosemary and onion (optional)" },
+                    { zh: "用勺子不断将黄油汁浇在牛排上，提升风味，继续煎至所需熟度", en: "Continuously spoon butter sauce over the steak to enhance flavor, fry to desired doneness" },
+                    { zh: "煎好后取出牛排，静置5分钟（让肉汁回流），即可装盘食用", en: "Take out the steak, rest for 5 minutes (let juice flow back), serve" }
+                ],
+                tips: { zh: "1. 牛排一定要回温，否则内部不易煎熟；2. 煎制时不要频繁翻动，一面定型后再翻面；3. 静置是关键步骤，保证口感多汁；4. 可搭配黑椒汁或番茄酱食用", en: "1. Steak must be brought to room temperature for even cooking; 2. Do not flip frequently, flip only when one side is set; 3. Resting is crucial for juicy texture; 4. Serve with black pepper sauce or tomato sauce" }
+            },
+            {
+                id: 5,
+                title: { zh: "番茄意面", en: "Tomato Pasta" },
+                thumbnail: "https://picsum.photos/id/271/400/300",
+                cookTime: 20,
+                difficulty: 2,
+                taste: { zh: "酸甜", en: "Sweet and Sour" },
+                cuisine: { zh: "西餐", en: "Western" },
+                cuisineType: "en",
+                ingredients: [
+                    { id: 621, name: { zh: "意面", en: "Pasta" }, amount: { zh: "100g", en: "100g" } },
+                    { id: 127, name: { zh: "番茄", en: "Tomato" }, amount: { zh: "2个", en: "2 pcs" } },
+                    { id: 223, name: { zh: "培根", en: "Bacon" }, amount: { zh: "2片（可选）", en: "2 slices (optional)" } },
+                    { id: 521, name: { zh: "盐", en: "Salt" }, amount: { zh: "少许", en: "A pinch" } },
+                    { id: 523, name: { zh: "橄榄油", en: "Olive Oil" }, amount: { zh: "1勺", en: "1 tbsp" } },
+                    { id: 524, name: { zh: "意式番茄酱", en: "Italian Tomato Sauce" }, amount: { zh: "2勺", en: "2 tbsp" } },
+                    { id: 322, name: { zh: "芝士", en: "Cheese" }, amount: { zh: "适量（可选）", en: "Proper amount (optional)" } },
+                    { id: 113, name: { zh: "大蒜", en: "Garlic" }, amount: { zh: "2瓣", en: "2 cloves" } }
+                ],
+                steps: [
+                    { zh: "锅中加水烧开，加入少许盐（意面水要咸如海水），放入意面，按照包装说明煮至8分熟（约8-10分钟）", en: "Boil water in a pot, add a pinch of salt (pasta water should be as salty as seawater), add pasta, cook to 80% done according to package instructions (about 8-10 minutes)" },
+                    { zh: "番茄洗净切丁，大蒜切末，培根切小块备用", en: "Dice tomatoes, mince garlic, cut bacon into small pieces (optional)" },
+                    { zh: "平底锅烧热，倒入橄榄油，放入蒜末爆香（约10秒）", en: "Heat a pan, pour in olive oil, add minced garlic and sauté for 10 seconds" },
+                    { zh: "放入培根块（可选），翻炒至焦香（约2分钟）", en: "Add bacon pieces (optional), stir-fry until crispy (about 2 minutes)" },
+                    { zh: "放入番茄丁，翻炒2分钟至出汁，加入意式番茄酱，翻炒均匀", en: "Add tomato dices, stir-fry for 2 minutes until juicy, add Italian tomato sauce, stir well" },
+                    { zh: "加入少许盐调味，小火煮3分钟，制成番茄酱汁", en: "Add a pinch of salt to taste, cook on low heat for 3 minutes to make tomato sauce" },
+                    { zh: "意面煮好后捞出，沥干水分（保留少许面汤），放入番茄酱汁中", en: "Drain cooked pasta (keep a little pasta water), add to the tomato sauce" },
+                    { zh: "翻炒均匀，让意面裹满酱汁，可加入少许面汤调整浓稠度", en: "Stir well to coat pasta with sauce, add a little pasta water to adjust consistency" },
+                    { zh: "出锅装盘，撒上芝士碎（可选），即可食用", en: "Serve on a
