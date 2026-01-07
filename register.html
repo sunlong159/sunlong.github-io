@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>注册 - 食尽其用</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #f5f5f5;
+            margin: 0;
+        }
+        
+        .auth-container {
+            width: 100%;
+            max-width: 400px;
+            padding: 20px;
+        }
+        
+        .auth-card {
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+        }
+        
+        .auth-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .auth-logo {
+            font-size: 48px;
+            margin-bottom: 16px;
+            color: #4CAF50;
+        }
+        
+        .auth-header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #333;
+        }
+        
+        .input-wrapper {
+            position: relative;
+        }
+        
+        .input-icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #999;
+        }
+        
+        .input-wrapper input {
+            width: 100%;
+            padding: 12px 12px 12px 40px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        
+        .input-wrapper input:focus {
+            outline: none;
+            border-color: #4CAF50;
+            box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.1);
+        }
+        
+        .form-options {
+            margin-bottom: 24px;
+        }
+        
+        .agree-terms {
+            display: flex;
+            align-items: flex-start;
+        }
+        
+        .agree-terms input {
+            margin-right: 8px;
+            margin-top: 2px;
+        }
+        
+        .agree-terms a {
+            color: #4CAF50;
+            text-decoration: none;
+        }
+        
+        .agree-terms a:hover {
+            text-decoration: underline;
+        }
+        
+        .auth-btn {
+            width: 100%;
+            padding: 14px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        
+        .auth-btn:hover {
+            background-color: #45a049;
+        }
+        
+        .auth-divider {
+            display: flex;
+            align-items: center;
+            margin: 24px 0;
+        }
+        
+        .auth-divider::before,
+        .auth-divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background-color: #ddd;
+        }
+        
+        .auth-divider span {
+            padding: 0 16px;
+            color: #666;
+        }
+        
+        .social-login {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+        
+        .social-btn {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+        }
+        
+        .social-btn:hover {
+            border-color: #4CAF50;
+            box-shadow: 0 2px 4px rgba(76, 175, 80, 0.1);
+        }
+        
+        .social-btn i {
+            font-size: 18px;
+        }
+        
+        .social-btn.wechat {
+            color: #07C160;
+        }
+        
+        .social-btn.qq {
+            color: #12B7F5;
+        }
+        
+        .auth-switch {
+            text-align: center;
+        }
+        
+        .auth-switch a {
+            color: #4CAF50;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        
+        .auth-switch a:hover {
+            text-decoration: underline;
+        }
+        
+        .back-to-home {
+            text-align: center;
+            margin-top: 24px;
+        }
+        
+        .back-to-home a {
+            color: #666;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        .back-to-home a:hover {
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="auth-header">
+                <i class="fas fa-utensils auth-logo"></i>
+                <h1 class="lang-zh">创建账号</h1>
+                <h1 class="lang-en" style="display: none;">Create Account</h1>
+            </div>
+            
+            <form id="register-form-element">
+                <div class="form-group">
+                    <label class="lang-zh">用户名</label>
+                    <label class="lang-en" style="display: none;">Username</label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-user input-icon"></i>
+                        <input type="text" id="register-username" required placeholder="请输入用户名">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="lang-zh">邮箱</label>
+                    <label class="lang-en" style="display: none;">Email</label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-envelope input-icon"></i>
+                        <input type="email" id="register-email" required placeholder="请输入邮箱">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="lang-zh">密码</label>
+                    <label class="lang-en" style="display: none;">Password</label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-lock input-icon"></i>
+                        <input type="password" id="register-password" required placeholder="请输入密码">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="lang-zh">确认密码</label>
+                    <label class="lang-en" style="display: none;">Confirm Password</label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-lock input-icon"></i>
+                        <input type="password" id="register-confirm" required placeholder="请再次输入密码">
+                    </div>
+                </div>
+                
+                <div class="form-options">
+                    <label class="agree-terms">
+                        <input type="checkbox" id="agree-terms" required>
+                        <span class="lang-zh">我已阅读并同意</span>
+                        <span class="lang-en" style="display: none;">I agree to</span>
+                        <a href="#" class="lang-zh">用户协议</a>
+                        <a href="#" class="lang-en" style="display: none;">Terms of Service</a>
+                    </label>
+                </div>
+                
+                <button type="submit" class="auth-btn register-btn">
+                    <span class="lang-zh">注册</span>
+                    <span class="lang-en" style="display: none;">Register</span>
+                </button>
+            </form>
+            
+            <div class="auth-divider">
+                <span class="lang-zh">或</span>
+                <span class="lang-en" style="display: none;">or</span>
+            </div>
+            
+            <div class="social-login">
+                <button class="social-btn wechat">
+                    <i class="fab fa-weixin"></i>
+                    <span class="lang-zh">微信注册</span>
+                    <span class="lang-en" style="display: none;">WeChat</span>
+                </button>
+                <button class="social-btn qq">
+                    <i class="fab fa-qq"></i>
+                    <span class="lang-zh">QQ注册</span>
+                    <span class="lang-en" style="display: none;">QQ</span>
+                </button>
+            </div>
+            
+            <div class="auth-switch">
+                <span class="lang-zh">已有账号?</span>
+                <span class="lang-en" style="display: none;">Have an account?</span>
+                <a href="login.html">
+                    <span class="lang-zh">立即登录</span>
+                    <span class="lang-en" style="display: none;">Login Now</span>
+                </a>
+            </div>
+            
+            <div class="back-to-home">
+                <a href="index.html">
+                    <i class="fas fa-arrow-left"></i>
+                    <span class="lang-zh">返回首页</span>
+                    <span class="lang-en" style="display: none;">Back to Home</span>
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Firebase SDK -->
+    <script type="module">
+        // Import the functions you need from the SDKs you need
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-analytics.js";
+        import { getAuth, createUserWithEmailAndPassword, updateProfile } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-auth.js";
+        
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyCGN4JJWxi28rk4FWDRI7NVH-py_ZOBpyc",
+            authDomain: "zhuce-f82c7.firebaseapp.com",
+            projectId: "zhuce-f82c7",
+            storageBucket: "zhuce-f82c7.firebasestorage.app",
+            messagingSenderId: "246055889326",
+            appId: "1:246055889326:web:ecf3cd5e321a455c9a803f",
+            measurementId: "G-F68QE0F4VR"
+        };
+        
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const analytics = getAnalytics(app);
+        const auth = getAuth(app);
+        
+        // 注册表单提交
+        document.getElementById('register-form-element').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const username = document.getElementById('register-username').value;
+            const email = document.getElementById('register-email').value;
+            const password = document.getElementById('register-password').value;
+            const confirmPassword = document.getElementById('register-confirm').value;
+            
+            // 验证密码是否匹配
+            if (password !== confirmPassword) {
+                alert('两次输入的密码不一致');
+                return;
+            }
+            
+            // 使用 Firebase 注册
+            createUserWithEmailAndPassword(auth, email, password)
+                .then((userCredential) => {
+                    // 注册成功
+                    const user = userCredential.user;
+                    console.log('注册成功:', user);
+                    
+                    // 更新用户资料，添加用户名
+                    return updateProfile(user, {
+                        displayName: username
+                    });
+                })
+                .then(() => {
+                    // 用户名更新成功
+                    console.log('用户名更新成功');
+                    
+                    // 重定向到首页
+                    window.location.href = 'index.html';
+                })
+                .catch((error) => {
+                    // 注册失败
+                    const errorCode = error.code;
+                    const errorMessage = error.message;
+                    console.error('注册失败:', errorCode, errorMessage);
+                    
+                    // 显示错误信息
+                    alert('注册失败: ' + errorMessage);
+                });
+        });
+        
+        // 社交登录按钮
+        document.querySelector('.social-btn.wechat').addEventListener('click', function() {
+            console.log('微信注册');
+            // 这里可以添加微信注册逻辑
+            alert('微信注册功能正在开发中');
+        });
+        
+        document.querySelector('.social-btn.qq').addEventListener('click', function() {
+            console.log('QQ注册');
+            // 这里可以添加QQ注册逻辑
+            alert('QQ注册功能正在开发中');
+        });
+        
+        // 用户协议链接
+        document.querySelectorAll('.agree-terms a').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                console.log('用户协议');
+                alert('用户协议功能正在开发中');
+            });
+        });
+    </script>
+</body>
+</html>

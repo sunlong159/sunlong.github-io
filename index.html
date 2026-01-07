@@ -1,14 +1,1835 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>食尽其用 - 智能菜谱助手</title>
     <link rel="stylesheet" href="styles.css">
-    <title>First Page</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- FirebaseUI CSS -->
+    <link type="text/css" rel="stylesheet" href="https://www.gstatic.com/firebasejs/ui/6.0.1/firebase-ui-auth.css" />
+    <!-- Firebase SDK will be initialized at the bottom of the page -->
 </head>
 <body>
-    <h2>This is my first page</h2>
-    <script src="main.js"></script>
+    <!-- 顶部导航栏 -->
+    <header class="header-content">
+        <a href="#" class="logo" id="logo">
+            <i class="fas fa-utensils"></i>
+            <span class="lang-zh">食尽其用</span>
+            <span class="lang-en" style="display: none;">Cooking Magic</span>
+        </a>
+        
+        <div class="header-controls">
+            <!-- 搜索框 -->
+            <div class="global-search">
+                <input type="text" id="global-search" placeholder="搜索菜谱、食材..." class="global-search-input">
+                <i class="fas fa-search global-search-icon"></i>
+            </div>
+            
+            <div class="settings">
+                <!-- 用户中心 -->
+                <div class="user-center">
+                    <a href="login.html" class="user-btn" title="用户中心">
+                        <i class="fas fa-user-circle"></i>
+                        <span class="user-name lang-zh">登录</span>
+                        <span class="user-name lang-en" style="display: none;">Login</span>
+                    </a>
+                </div>
+                
+                <!-- 语言切换 -->
+                <button class="language-switch" id="language-switch" title="切换语言">
+                    <span class="lang-zh">中</span>
+                    <span class="lang-en" style="display: none;">EN</span>
+                </button>
+                
+                <!-- 主题切换 -->
+                <button class="theme-switch" id="theme-switch" title="切换主题">
+                    <span class="theme-light">🌞</span>
+                    <span class="theme-dark" style="display: none;">🌙</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+
+
+    <!-- 个人中心模态框 -->
+    <div class="profile-modal" id="profile-modal">
+        <div class="profile-modal-content">
+            <button class="profile-close" id="profile-close">&times;</button>
+            
+            <div class="profile-header">
+                <div class="profile-cover"></div>
+                <div class="profile-avatar-section">
+                    <div class="profile-avatar">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <div class="profile-user-info">
+                        <h2 class="profile-name" id="profile-name">用户名</h2>
+                        <p class="profile-email" id="profile-email">user@example.com</p>
+                        <div class="profile-stats">
+                            <div class="stat-item">
+                                <span class="stat-number" id="favorites-count">0</span>
+                                <span class="stat-label lang-zh">收藏</span>
+                                <span class="stat-label lang-en" style="display: none;">Favorites</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-number" id="history-count">0</span>
+                                <span class="stat-label lang-zh">浏览</span>
+                                <span class="stat-label lang-en" style="display: none;">Views</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-number" id="recipes-count">0</span>
+                                <span class="stat-label lang-zh">菜谱</span>
+                                <span class="stat-label lang-en" style="display: none;">Recipes</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="profile-tabs">
+                <button class="profile-tab active" data-tab="favorites">
+                    <i class="fas fa-heart"></i>
+                    <span class="lang-zh">我的收藏</span>
+                    <span class="lang-en" style="display: none;">Favorites</span>
+                </button>
+                <button class="profile-tab" data-tab="history">
+                    <i class="fas fa-history"></i>
+                    <span class="lang-zh">浏览历史</span>
+                    <span class="lang-en" style="display: none;">History</span>
+                </button>
+                <button class="profile-tab" data-tab="settings">
+                    <i class="fas fa-cog"></i>
+                    <span class="lang-zh">设置</span>
+                    <span class="lang-en" style="display: none;">Settings</span>
+                </button>
+            </div>
+            
+            <div class="profile-content">
+                <div class="profile-panel active" id="favorites-panel">
+                    <div class="favorites-list" id="favorites-list">
+                        <div class="empty-state">
+                            <i class="fas fa-heart-broken"></i>
+                            <p class="lang-zh">还没有收藏任何菜谱</p>
+                            <p class="lang-en" style="display: none;">No favorites yet</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="profile-panel" id="history-panel">
+                    <div class="history-list" id="history-list">
+                        <div class="empty-state">
+                            <i class="fas fa-history"></i>
+                            <p class="lang-zh">还没有浏览记录</p>
+                            <p class="lang-en" style="display: none;">No history yet</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="profile-panel" id="settings-panel">
+                    <div class="settings-section">
+                        <h3 class="lang-zh">账户设置</h3>
+                        <h3 class="lang-en" style="display: none;">Account Settings</h3>
+                        
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <span class="lang-zh">用户名</span>
+                                <span class="lang-en" style="display: none;">Username</span>
+                            </div>
+                            <input type="text" id="setting-username" class="setting-input">
+                        </div>
+                        
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <span class="lang-zh">邮箱</span>
+                                <span class="lang-en" style="display: none;">Email</span>
+                            </div>
+                            <input type="email" id="setting-email" class="setting-input">
+                        </div>
+                        
+                        <button class="save-settings-btn">
+                            <span class="lang-zh">保存更改</span>
+                            <span class="lang-en" style="display: none;">Save Changes</span>
+                        </button>
+                    </div>
+                    
+                    <div class="settings-section">
+                        <h3 class="lang-zh">通知设置</h3>
+                        <h3 class="lang-en" style="display: none;">Notification Settings</h3>
+                        
+                        <div class="setting-item toggle-setting">
+                            <div class="setting-info">
+                                <i class="fas fa-bell"></i>
+                                <span class="lang-zh">每日推荐</span>
+                                <span class="lang-en" style="display: none;">Daily Recommendations</span>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" id="daily-recommendations" checked>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        
+                        <div class="setting-item toggle-setting">
+                            <div class="setting-info">
+                                <i class="fas fa-envelope"></i>
+                                <span class="lang-zh">邮件通知</span>
+                                <span class="lang-en" style="display: none;">Email Notifications</span>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" id="email-notifications">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="settings-section danger-section">
+                        <h3 class="lang-zh">危险操作</h3>
+                        <h3 class="lang-en" style="display: none;">Danger Zone</h3>
+                        
+                        <button class="danger-btn" id="delete-account">
+                            <i class="fas fa-trash"></i>
+                            <span class="lang-zh">删除账户</span>
+                            <span class="lang-en" style="display: none;">Delete Account</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 食材选择区域 -->
+    <section class="ingredients-selection">
+        <div class="ingredients-header">
+            <div class="ingredients-title-wrapper">
+                <i class="fas fa-carrot"></i>
+                <h2 class="ingredients-title lang-zh" id="ingredients-section-title">选择食材</h2>
+                <h2 class="ingredients-title lang-en" id="ingredients-section-title-en" style="display: none;">Select Ingredients</h2>
+            </div>
+            <div class="header-actions">
+                <button class="collapse-btn" id="collapse-btn" title="折叠食材面板">
+                    <i class="fas fa-chevron-up collapse-icon"></i>
+                    <i class="fas fa-chevron-down expand-icon" style="display: none;"></i>
+                </button>
+                <button class="quick-clear-btn" id="quick-clear-btn" title="快速清空">
+                    <i class="fas fa-trash-alt"></i>
+                    <span class="lang-zh">清空</span>
+                    <span class="lang-en" style="display: none;">Clear</span>
+                </button>
+            </div>
+        </div>
+        
+        <div class="ingredients-controls">
+            <div class="search-container">
+                <div class="search-wrapper">
+                    <i class="fas fa-search search-icon"></i>
+                    <input type="text" id="ingredient-search" placeholder="搜索食材..." class="search-input">
+                    <button class="search-clear" id="search-clear" style="display: none;">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="search-results" id="search-results"></div>
+            </div>
+            
+            <div class="selected-ingredients">
+                <div class="selected-header">
+                    <span class="selected-count lang-zh">已选 <strong id="selected-count">0</strong> 种食材</span>
+                    <span class="selected-count lang-en" style="display: none;">Selected <strong id="selected-count-en">0</strong> ingredients</span>
+                    <button class="clear-all" id="clear-all" style="display: none;">
+                        <i class="fas fa-trash"></i>
+                        <span class="lang-zh">清空</span>
+                        <span class="lang-en" style="display: none;">Clear</span>
+                    </button>
+                </div>
+                <div class="selected-ingredients-list" id="selected-ingredients-list"></div>
+            </div>
+            
+            <div class="seasoning-controls">
+                <button class="add-seasoning-btn" id="add-seasoning-btn" title="添加调料">
+                    <i class="fas fa-plus-circle"></i>
+                    <span class="lang-zh">添加调料</span>
+                    <span class="lang-en" style="display: none;">Add Seasoning</span>
+                </button>
+            </div>
+            
+            <div class="manual-ingredient">
+                <div class="manual-input-wrapper">
+                    <i class="fas fa-plus-circle"></i>
+                    <input type="text" id="manual-ingredient" placeholder="添加自定义食材...">
+                </div>
+                <button class="add-manual-btn" id="add-manual-btn">
+                    <i class="fas fa-plus"></i>
+                </button>
+            </div>
+        </div>
+        
+        <div id="ingredients-container"></div>
+    </section>
+
+    <!-- 主要内容区域 -->
+    <main class="main-content">
+        <!-- 菜系分类标签 -->
+        <div class="cuisine-tabs">
+            <button class="cuisine-tab active" data-cuisine="all">
+                <i class="fas fa-globe"></i>
+                <span class="lang-zh">全部菜系</span>
+                <span class="lang-en" style="display: none;">All Cuisines</span>
+            </button>
+            <button class="cuisine-tab" data-cuisine="chinese">
+                <i class="fas fa-dragon"></i>
+                <span class="lang-zh">中华料理</span>
+                <span class="lang-en" style="display: none;">Chinese</span>
+            </button>
+            <button class="cuisine-tab" data-cuisine="western">
+                <i class="fas fa-pizza-slice"></i>
+                <span class="lang-zh">西式料理</span>
+                <span class="lang-en" style="display: none;">Western</span>
+            </button>
+            <button class="cuisine-tab" data-cuisine="japanese">
+                <i class="fas fa-fish"></i>
+                <span class="lang-zh">日式料理</span>
+                <span class="lang-en" style="display: none;">Japanese</span>
+            </button>
+            <button class="cuisine-tab" data-cuisine="other">
+                <i class="fas fa-earth-americas"></i>
+                <span class="lang-zh">其他菜系</span>
+                <span class="lang-en" style="display: none;">Other</span>
+            </button>
+        </div>
+
+        <!-- 内容区 -->
+        <div class="content-wrapper">
+            <!-- 欢迎信息 -->
+            <div class="welcome-section" id="welcome-section">
+                <div class="welcome-content">
+                    <div class="welcome-icon">
+                        <i class="fas fa-utensils"></i>
+                    </div>
+                    <h2 class="welcome-title lang-zh" id="welcome-title">开始您的美食之旅</h2>
+                    <h2 class="welcome-title lang-en" id="welcome-title-en" style="display: none;">Start Your Culinary Journey</h2>
+                    <p class="welcome-description lang-zh" id="welcome-description">勾选您家中现有的食材，我们将为您智能匹配最合适的菜谱</p>
+                    <p class="welcome-description lang-en" id="welcome-description-en" style="display: none;">Select the ingredients you have, and we'll find the perfect recipes for you</p>
+                    <div class="welcome-features">
+                        <div class="feature-item">
+                            <i class="fas fa-magic"></i>
+                            <span class="lang-zh">智能匹配</span>
+                            <span class="lang-en" style="display: none;">Smart Match</span>
+                        </div>
+                        <div class="feature-item">
+                            <i class="fas fa-clock"></i>
+                            <span class="lang-zh">快速烹饪</span>
+                            <span class="lang-en" style="display: none;">Quick Cooking</span>
+                        </div>
+                        <div class="feature-item">
+                            <i class="fas fa-book-open"></i>
+                            <span class="lang-zh">详细教程</span>
+                            <span class="lang-en" style="display: none;">Detailed Guide</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="welcome-illustration">
+                    <div class="illustration-item" style="--delay: 0.1s">
+                        <i class="fas fa-carrot"></i>
+                    </div>
+                    <div class="illustration-item" style="--delay: 0.2s">
+                        <i class="fas fa-drumstick-bite"></i>
+                    </div>
+                    <div class="illustration-item" style="--delay: 0.3s">
+                        <i class="fas fa-cheese"></i>
+                    </div>
+                    <div class="illustration-item" style="--delay: 0.4s">
+                        <i class="fas fa-leaf"></i>
+                    </div>
+                    <div class="illustration-item" style="--delay: 0.5s">
+                        <i class="fas fa-pepper-hot"></i>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 筛选栏 -->
+            <div class="filters-wrapper" id="filters-wrapper" style="display: none;">
+                <div class="filters">
+                    <div class="filter-group">
+                        <label class="filter-label">
+                            <i class="fas fa-clock"></i>
+                            <span class="lang-zh">烹饪时长</span>
+                            <span class="lang-en" style="display: none;">Cooking Time</span>
+                        </label>
+                        <select class="filter-select" id="time-filter">
+                            <option value="all" class="lang-zh">全部</option>
+                            <option value="all" class="lang-en" style="display: none;">All</option>
+                            <option value="short" class="lang-zh">10分钟内</option>
+                            <option value="short" class="lang-en" style="display: none;">Under 10 min</option>
+                            <option value="medium" class="lang-zh">10-20分钟</option>
+                            <option value="medium" class="lang-en" style="display: none;">10-20 min</option>
+                            <option value="long" class="lang-zh">20-40分钟</option>
+                            <option value="long" class="lang-en" style="display: none;">20-40 min</option>
+                            <option value="very-long" class="lang-zh">40分钟以上</option>
+                            <option value="very-long" class="lang-en" style="display: none;">Over 40 min</option>
+                        </select>
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label class="filter-label">
+                            <i class="fas fa-signal"></i>
+                            <span class="lang-zh">难度</span>
+                            <span class="lang-en" style="display: none;">Difficulty</span>
+                        </label>
+                        <select class="filter-select" id="difficulty-filter">
+                            <option value="all" class="lang-zh">全部</option>
+                            <option value="all" class="lang-en" style="display: none;">All</option>
+                            <option value="easy" class="lang-zh">简单</option>
+                            <option value="easy" class="lang-en" style="display: none;">Easy</option>
+                            <option value="medium" class="lang-zh">中等</option>
+                            <option value="medium" class="lang-en" style="display: none;">Medium</option>
+                            <option value="hard" class="lang-zh">复杂</option>
+                            <option value="hard" class="lang-en" style="display: none;">Hard</option>
+                        </select>
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label class="filter-label">
+                            <i class="fas fa-sort"></i>
+                            <span class="lang-zh">排序</span>
+                            <span class="lang-en" style="display: none;">Sort</span>
+                        </label>
+                        <select class="filter-select" id="sort-filter">
+                            <option value="coverage" class="lang-zh">食材覆盖率</option>
+                            <option value="coverage" class="lang-en" style="display: none;">Ingredient Match</option>
+                            <option value="time" class="lang-zh">烹饪时长</option>
+                            <option value="time" class="lang-en" style="display: none;">Cooking Time</option>
+                            <option value="popularity" class="lang-zh">人气推荐</span>
+                            <option value="popularity" class="lang-en" style="display: none;">Popular</option>
+                        </select>
+                    </div>
+                    
+                    <div class="view-toggle">
+                        <button class="view-btn active" data-view="grid" title="网格视图">
+                            <i class="fas fa-th-large"></i>
+                        </button>
+                        <button class="view-btn" data-view="list" title="列表视图">
+                            <i class="fas fa-list"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 菜谱区域 -->
+            <div class="recipes-section" id="recipes-section">
+                <div class="recipes-header">
+                    <h2 class="recipes-title lang-zh">推荐菜谱</h2>
+                    <h2 class="recipes-title lang-en" style="display: none;">Recommended Recipes</h2>
+                    <span class="recipes-count lang-zh">找到 <strong id="recipes-count">0</strong> 道菜谱</span>
+                    <span class="recipes-count lang-en" style="display: none;"><strong id="recipes-count-en">0</strong> recipes found</span>
+                </div>
+                <div class="recipes-list" id="recipes-list"></div>
+            </div>
+            
+            <!-- 加载动画 -->
+            <div class="loading-overlay" id="loading-overlay" style="display: none;">
+                <div class="loading-spinner">
+                    <div class="spinner-ring"></div>
+                    <div class="spinner-ring"></div>
+                    <div class="spinner-ring"></div>
+                </div>
+                <p class="lang-zh">正在为您寻找美味菜谱...</p>
+                <p class="lang-en" style="display: none;">Finding delicious recipes for you...</p>
+            </div>
+            
+            <!-- 空状态 -->
+            <div class="empty-state" id="empty-state" style="display: none;">
+                <i class="fas fa-search"></i>
+                <h3 class="lang-zh">没有找到匹配的菜谱</h3>
+                <h3 class="lang-en" style="display: none;">No matching recipes found</h3>
+                <p class="lang-zh">试试选择其他食材或调整筛选条件</p>
+                <p class="lang-en" style="display: none;">Try selecting different ingredients or adjusting filters</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- 菜谱详情弹窗 -->
+    <div class="recipe-modal" id="recipe-modal">
+        <div class="recipe-modal-overlay" id="recipe-modal-overlay"></div>
+        <div class="recipe-modal-content">
+            <button class="recipe-modal-close" id="recipe-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+            
+            <div class="recipe-modal-header">
+                <div class="recipe-image-large" id="recipe-image-large"></div>
+                <div class="recipe-modal-title-section">
+                    <h2 class="recipe-modal-title" id="recipe-modal-title"></h2>
+                    <p class="recipe-modal-subtitle" id="recipe-modal-subtitle"></p>
+                    <div class="recipe-badges" id="recipe-badges"></div>
+                </div>
+            </div>
+            
+            <div class="recipe-modal-body">
+                <div class="recipe-tabs">
+                    <button class="recipe-tab active" data-tab="ingredients-tab">
+                        <i class="fas fa-list"></i>
+                        <span class="lang-zh">食材清单</span>
+                        <span class="lang-en" style="display: none;">Ingredients</span>
+                    </button>
+                    <button class="recipe-tab" data-tab="steps-tab">
+                        <i class="fas fa-shoe-prints"></i>
+                        <span class="lang-zh">烹饪步骤</span>
+                        <span class="lang-en" style="display: none;">Steps</span>
+                    </button>
+                    <button class="recipe-tab" data-tab="tips-tab">
+                        <i class="fas fa-lightbulb"></i>
+                        <span class="lang-zh">小贴士</span>
+                        <span class="lang-en" style="display: none;">Tips</span>
+                    </button>
+                </div>
+                
+                <div class="recipe-tab-contents">
+                    <div class="recipe-tab-content active" id="ingredients-tab">
+                        <div class="ingredients-stats">
+                            <div class="stat-have">
+                                <i class="fas fa-check-circle"></i>
+                                <span id="have-count">0</span>
+                                <span class="lang-zh">已拥有</span>
+                                <span class="lang-en" style="display: none;">Have</span>
+                            </div>
+                            <div class="stat-need">
+                                <i class="fas fa-shopping-cart"></i>
+                                <span id="need-count">0</span>
+                                <span class="lang-zh">需要购买</span>
+                                <span class="lang-en" style="display: none;">Need</span>
+                            </div>
+                            <div class="stat-coverage">
+                                <i class="fas fa-percentage"></i>
+                                <span id="coverage-percent">0%</span>
+                                <span class="lang-zh">覆盖率</span>
+                                <span class="lang-en" style="display: none;">Coverage</span>
+                            </div>
+                        </div>
+                        <div class="ingredients-grid" id="ingredients-grid"></div>
+                    </div>
+                    
+                    <div class="recipe-tab-content" id="steps-tab">
+                        <div class="steps-timeline" id="steps-timeline"></div>
+                    </div>
+                    
+                    <div class="recipe-tab-content" id="tips-tab">
+                        <div class="tips-card" id="tips-card">
+                            <div class="tips-header">
+                                <i class="fas fa-star"></i>
+                                <span class="lang-zh">烹饪小贴士</span>
+                                <span class="lang-en" style="display: none;">Cooking Tips</span>
+                            </div>
+                            <div class="tips-body" id="tips-body"></div>
+                        </div>
+                        <div class="nutrition-info" id="nutrition-info">
+                            <h4 class="lang-zh">营养信息</h4>
+                            <h4 class="lang-en" style="display: none;">Nutrition Facts</h4>
+                            <div class="nutrition-grid" id="nutrition-grid"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="recipe-modal-footer">
+                <button class="recipe-action-btn favorite-btn" id="favorite-btn">
+                    <i class="far fa-heart"></i>
+                    <span class="lang-zh">收藏</span>
+                    <span class="lang-en" style="display: none;">Favorite</span>
+                </button>
+                <button class="recipe-action-btn share-btn" id="share-btn">
+                    <i class="fas fa-share-alt"></i>
+                    <span class="lang-zh">分享</span>
+                    <span class="lang-en" style="display: none;">Share</span>
+                </button>
+                <button class="recipe-action-btn print-btn" id="print-btn">
+                    <i class="fas fa-print"></i>
+                    <span class="lang-zh">打印</span>
+                    <span class="lang-en" style="display: none;">Print</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 吐司提示 -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- 添加调料模态框 -->
+    <div class="seasoning-modal" id="seasoning-modal">
+        <div class="seasoning-modal-content">
+            <button class="seasoning-close" id="seasoning-close">&times;</button>
+            
+            <!-- 添加调料表单 -->
+            <div class="seasoning-form">
+                <div class="seasoning-header">
+                    <i class="fas fa-utensils seasoning-logo"></i>
+                    <h2 class="lang-zh">添加调料</h2>
+                    <h2 class="lang-en" style="display: none;">Add Seasoning</h2>
+                </div>
+                
+                <form id="seasoning-form-element">
+                    <div class="form-group">
+                        <label class="lang-zh">调料名称</label>
+                        <label class="lang-en" style="display: none;">Seasoning Name</label>
+                        <div class="input-wrapper">
+                            <i class="fas fa-shopping-basket input-icon"></i>
+                            <input type="text" id="seasoning-name" required placeholder="请输入调料名称">
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="lang-zh">调料分类</label>
+                        <label class="lang-en" style="display: none;">Category</label>
+                        <div class="input-wrapper">
+                            <i class="fas fa-tags input-icon"></i>
+                            <select id="seasoning-category" required>
+                                <option value="condiments" class="lang-zh">调味品</option>
+                                <option value="condiments" class="lang-en" style="display: none;">Condiments</option>
+                                <option value="western" class="lang-zh">西餐调料</option>
+                                <option value="western" class="lang-en" style="display: none;">Western Seasoning</option>
+                                <option value="japanese" class="lang-zh">日式调料</option>
+                                <option value="japanese" class="lang-en" style="display: none;">Japanese Seasoning</option>
+                                <option value="other" class="lang-zh">其他调料</option>
+                                <option value="other" class="lang-en" style="display: none;">Other</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="lang-zh">关联食材（可选）</label>
+                        <label class="lang-en" style="display: none;">Associated Ingredients (Optional)</label>
+                        <div class="input-wrapper">
+                            <i class="fas fa-link input-icon"></i>
+                            <select id="seasoning-associated" multiple placeholder="选择关联的食材">
+                                <!-- 食材选项将通过JavaScript动态生成 -->
+                            </select>
+                        </div>
+                        <div class="form-hint lang-zh">按住Ctrl或Shift键可以选择多个食材</div>
+                        <div class="form-hint lang-en" style="display: none;">Hold Ctrl or Shift to select multiple ingredients</div>
+                    </div>
+                    
+                    <button type="submit" class="auth-btn seasoning-btn">
+                        <span class="lang-zh">保存</span>
+                        <span class="lang-en" style="display: none;">Save</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 初始化调料模态框 -->
+    <div class="init-seasoning-modal" id="init-seasoning-modal">
+        <div class="init-seasoning-modal-content">
+            <button class="init-seasoning-close" id="init-seasoning-close">&times;</button>
+            
+            <!-- 初始化调料表单 -->
+            <div class="init-seasoning-form">
+                <div class="init-seasoning-header">
+                    <i class="fas fa-utensils init-seasoning-logo"></i>
+                    <h2 class="lang-zh">初始化您的调料</h2>
+                    <h2 class="lang-en" style="display: none;">Initialize Your Seasonings</h2>
+                    <p class="lang-zh">请选择您家里已有的调料，以便我们在推荐菜谱时更好地为您匹配</p>
+                    <p class="lang-en" style="display: none;">Please select the seasonings you have at home so we can better match recipes for you</p>
+                </div>
+                
+                <form id="init-seasoning-form-element">
+                    <div class="form-group">
+                        <label class="lang-zh">常用调料</label>
+                        <label class="lang-en" style="display: none;">Common Seasonings</label>
+                        <div class="seasoning-checkboxes" id="common-seasonings">
+                            <!-- 常用调料选项将通过JavaScript动态生成 -->
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="lang-zh">其他调料</label>
+                        <label class="lang-en" style="display: none;">Other Seasonings</label>
+                        <div class="other-seasonings-input">
+                            <input type="text" id="other-seasonings" placeholder="请输入其他调料，用逗号分隔">
+                        </div>
+                    </div>
+                    
+                    <div class="form-options">
+                        <label class="remember-seasonings">
+                            <input type="checkbox" id="remember-seasonings" checked>
+                            <span class="lang-zh">记住我的选择</span>
+                            <span class="lang-en" style="display: none;">Remember my selection</span>
+                        </label>
+                    </div>
+                    
+                    <button type="submit" class="auth-btn init-seasoning-btn">
+                        <span class="lang-zh">保存并开始</span>
+                        <span class="lang-en" style="display: none;">Save and Start</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 页脚 -->
+    <footer class="footer-content">
+        <div class="footer-main">
+            <div class="footer-brand">
+                <a href="#" class="footer-logo">
+                    <i class="fas fa-utensils"></i>
+                    <span>食尽其用</span>
+                </a>
+                <p class="footer-slogan lang-zh">让每一种食材都物尽其用</p>
+                <p class="footer-slogan lang-en" style="display: none;">Make the most of every ingredient</p>
+            </div>
+            
+            <div class="footer-links">
+                <div class="footer-section">
+                    <h4 class="lang-zh">快速链接</h4>
+                    <h4 class="lang-en" style="display: none;">Quick Links</h4>
+                    <a href="#" class="lang-zh">首页</a>
+                    <a href="#" class="lang-en" style="display: none;">Home</a>
+                    <a href="#" class="lang-zh">菜谱</a>
+                    <a href="#" class="lang-en" style="display: none;">Recipes</a>
+                    <a href="#" class="lang-zh">食材库</a>
+                    <a href="#" class="lang-en" style="display: none;">Ingredients</a>
+                </div>
+                
+                <div class="footer-section">
+                    <h4 class="lang-zh">帮助</h4>
+                    <h4 class="lang-en" style="display: none;">Help</h4>
+                    <a href="#" class="lang-zh">使用指南</a>
+                    <a href="#" class="lang-en" style="display: none;">User Guide</a>
+                    <a href="#" class="lang-zh">常见问题</a>
+                    <a href="#" class="lang-en" style="display: none;">FAQ</a>
+                    <a href="#" class="lang-zh">联系我们</a>
+                    <a href="#" class="lang-en" style="display: none;">Contact Us</a>
+                </div>
+                
+                <div class="footer-section">
+                    <h4 class="lang-zh">关注我们</h4>
+                    <h4 class="lang-en" style="display: none;">Follow Us</h4>
+                    <div class="social-links">
+                        <a href="#" class="social-link" title="微信">
+                            <i class="fab fa-weixin"></i>
+                        </a>
+                        <a href="#" class="social-link" title="微博">
+                            <i class="fab fa-weibo"></i>
+                        </a>
+                        <a href="#" class="social-link" title="抖音">
+                            <i class="fab fa-tiktok"></i>
+                        </a>
+                        <a href="#" class="social-link" title="小红书">
+                            <i class="fas fa-book"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer-bottom">
+            <p class="copyright" id="footer-text">© 2024 食尽其用 - 让每一种食材都物尽其用</p>
+            <div class="page-views-container">
+                <i class="fas fa-eye"></i>
+                <span class="lang-zh">网站浏览量: </span>
+                <span class="lang-en" style="display: none;">Page Views: </span>
+                <span id="page-views" class="page-views-count">0</span>
+            </div>
+        </div>
+    </footer>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    <!-- Firebase SDK (使用命名空间型API) -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-analytics-compat.js"></script>
+    
+    <!-- FirebaseUI JavaScript -->
+    <script src="https://www.gstatic.com/firebasejs/ui/6.0.1/firebase-ui-auth.js"></script>
+    
+    <!-- 初始化Firebase -->
+    <script>
+      // Your web app's Firebase configuration
+      const firebaseConfig = {
+        apiKey: "AIzaSyCGN4JJWxi28rk4FWDRI7NVH-py_ZOBpyc",
+        authDomain: "zhuce-f82c7.firebaseapp.com",
+        projectId: "zhuce-f82c7",
+        storageBucket: "zhuce-f82c7.firebasestorage.app",
+        messagingSenderId: "246055889326",
+        appId: "1:246055889326:web:ecf3cd5e321a455c9a803f",
+        measurementId: "G-F68QE0F4VR"
+      };
+
+      // Initialize Firebase using namespace API
+      const app = firebase.initializeApp(firebaseConfig);
+      const analytics = firebase.analytics();
+      const auth = firebase.auth();
+      
+      // Expose Firebase app to global scope for script.js
+      window.app = app;
+      window.analytics = analytics;
+      window.auth = auth;
+      window.firebase = firebase;
+      window.firebaseui = firebaseui;
+      
+      // Initialize FirebaseUI
+      const ui = new firebaseui.auth.AuthUI(auth);
+      window.ui = ui;
+    </script>
+    
+    <script src="script.js"></script>
 </body>
 </html>
